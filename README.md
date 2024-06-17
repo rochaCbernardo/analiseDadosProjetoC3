@@ -1,5 +1,5 @@
 # analiseDadosProjetoC3
-Esse repositório contém uma análise do DataFrame house_prices([house_train.csv](house_train)), disponível no Kaggle.
+Esse repositório contém uma análise do DataFrame house_prices([house_train.csv](house_train.csv)), disponível no Kaggle.
 
 ## Organização:
 * [house_train](house_train.csv): Arquivo utilizado para a criação do DataFrame, df_house_train; 
