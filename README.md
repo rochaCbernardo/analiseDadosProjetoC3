@@ -3,7 +3,7 @@ Esse repositório contém uma análise do DataFrame house_prices([house_train.cs
 
 ## Organização:
 * [house_train.csv](house_train): Arquivo utilizado para a criação do DataFrame, df_house_train; 
-* Colocar nome do arquivo: Aqui constam as análises realizadas e os modelos criados.
+* [analiseC3.ipynb](analiseC3): Aqui constam as análises realizadas e os modelos criados.
   - Em um primeiro momento, foi feita a análise exploratória dos dados para entender melhor a disposição dos dados e as características:
     - Verificando a quantidade de linhas e colunas do df;
       ```python
