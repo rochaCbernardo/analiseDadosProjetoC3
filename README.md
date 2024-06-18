@@ -132,3 +132,254 @@ Esse repositório contém uma análise do DataFrame house_prices([house_train.cs
         ```python
         print(pd.crosstab(y_logReg_test, y_logReg_pred, rownames=['Real'], colnames=['Predito'], margins=True))
         ```
+  - Aprendizagem supervisionada:
+    - Clusterização: vamos garantir que os valores ausentes sejam imputados corretamente e depois aplicar o K-Means;
+      ```python
+      from sklearn.preprocessing import StandardScaler, OneHotEncoder
+      from sklearn.compose import ColumnTransformer
+      from sklearn.pipeline import Pipeline
+      from sklearn.impute import SimpleImputer
+
+      print(df_house_train.head())
+      print(df_house_train.info())
+
+      numerical_features = df_house_train.select_dtypes(include=['int64', 'float64']).columns.tolist()
+      categorical_features = df_house_train.select_dtypes(include=['object']).columns.tolist()
+
+      if 'SalePrice' in numerical_features:
+        numerical_features.remove('SalePrice')
+      if 'SalePrice' in categorical_features:
+        categorical_features.remove('SalePrice')
+
+      numerical_pipeline = Pipeline([('imputer', SimpleImputer(strategy='mean')), ('scaler', StandardScaler())])
+
+      categorical_pipeline = Pipeline([('imputer', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+
+      preprocessor = ColumnTransformer(
+      transformers=[
+        ('num', numerical_pipeline, numerical_features), ('cat', categorical_pipeline, categorical_features)])
+
+      data_prepared = preprocessor.fit_transform(df_house_train)
+      ```
+    - Aplicação do K-Means:
+      - Definimos o númeo de clusters;
+      - Usamos K-Means para ajustar o modelo e prever os clusters;
+      - Adicionamos a informação de cluster ao dataframe original;
+      - Utilizamos PCA para reduzir dimensionalidade dos dados preparados;
+        ```python
+        from sklearn.cluster import KMeans
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        from sklearn.decomposition import PCA
+
+        n_clusters = 5
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+
+        data_clusters = kmeans.fit_predict(data_prepared)
+
+        df_house_train['Cluster'] = data_clusters
+
+        pca = PCA(n_components=2)
+        data_reduced = pca.fit_transform(data_prepared.toarray() if hasattr(data_prepared, 'toarray') else data_prepared)
+
+        plt.figure(figsize=(10, 6))
+        sns.scatterplot(x=data_reduced[:, 0], y=data_reduced[:, 1], hue=data_clusters, palette='viridis')
+        plt.title('Clusterização de Casas')
+        plt.xlabel('PCA 1')
+        plt.ylabel('PCA 2')
+        plt.legend(title='Cluster')
+        plt.show()
+      ```
+    - Avaliação modo de clusterirazação (Precision, Recall e F1-Score);
+      ```python
+      np.random.seed(0)
+      df_house_train['TrueLabels'] = np.random.choice(n_clusters, len(df_house_train))
+
+      label_encoder = LabelEncoder()
+      true_labels = label_encoder.fit_transform(df_house_train['TrueLabels'])
+
+      cluster_to_true_label = {}
+
+      for cluster in range(n_clusters):
+        mask = df_house_train['Cluster'] == cluster
+        most_common_label = df_house_train.loc[mask, 'TrueLabels'].mode()
+        if not most_common_label.empty:
+          cluster_to_true_label[cluster] = most_common_label.values[0]
+
+      predicted_labels = df_house_train['Cluster'].map(cluster_to_true_label)
+
+      precision = precision_score(true_labels, predicted_labels, average='macro')
+      recall = recall_score(true_labels, predicted_labels, average='macro')
+      f1 = f1_score(true_labels, predicted_labels, average='macro')
+
+
+      print(f"Precision: {precision}")
+      print(f"Recall: {recall}")
+      print(f"F1-Score: {f1}")
+
+      conf_matrix = confusion_matrix(true_labels, predicted_labels)
+      print(f"Confusion Matrix:\n{conf_matrix}")
+      ```
+    - Redução de dimensionalidade:
+      - Utilizamos 'simpleimputer' para tratar valores ausentes;
+      - Aplicamos o transformador para obter dados preparados e verificarmos a sua forma;
+        ```python
+        from sklearn.preprocessing import StandardScaler, OneHotEncoder
+        from sklearn.compose import ColumnTransformer
+        from sklearn.pipeline import Pipeline
+        from sklearn.impute import SimpleImputer
+
+        print(df_house_train.head())
+        print(df_house_train.info())
+
+        numerical_features = df_house_train.select_dtypes(include=['int64', 'float64']).columns.tolist()
+        categorical_features = df_house_train.select_dtypes(include=['object']).columns.tolist()
+
+        if 'SalePrice' in numerical_features:
+          numerical_features.remove('SalePrice')
+        if 'SalePrice' in categorical_features:
+          categorical_features.remove('SalePrice')
+
+        numerical_pipeline = Pipeline([('imputer', SimpleImputer(strategy='mean')),('scaler', StandardScaler())])
+
+        categorical_pipeline = Pipeline([('imputer', SimpleImputer(strategy='most_frequent')),('onehot', OneHotEncoder(handle_unknown='ignore'))  # Codificar variáveis categóricas])
+
+        preprocessor = ColumnTransformer(transformers=[('num', numerical_pipeline, numerical_features),('cat', categorical_pipeline, categorical_features)])
+
+        data_prepared = preprocessor.fit_transform(df_house_train)
+
+        print(data_prepared.shape)
+        ```
+    - Utilizamos PCA para reduzir os dados para 2 componentes principais e plotamos os resultados em um gráfico de dispersão;
+      ```python
+      pca = PCA(n_components=2)
+      data_pca = pca.fit_transform(data_prepared.toarray() if hasattr(data_prepared, 'toarray') else data_prepared)
+
+      plt.figure(figsize=(10, 6))
+      plt.scatter(data_pca[:, 0], data_pca[:, 1], alpha=0.5)
+      plt.title('Redução de Dimensionalidade com PCA')
+      plt.xlabel('Componente Principal 1')
+      plt.ylabel('Componente Principal 2')
+      plt.show()
+      ```
+    - Avaliação do modo de redução (Precision, Recall e F1-Score);
+      ```python
+      pca = PCA(n_components=2)
+      data_pca = pca.fit_transform(data_prepared.toarray() if hasattr(data_prepared, 'toarray') else data_prepared)
+
+      np.random.seed(0)
+      df_house_train['TrueLabels'] = np.random.choice([0, 1], len(df_house_train))
+
+      X_train, X_test, y_train, y_test = train_test_split(data_pca, df_house_train['TrueLabels'], test_size=0.3, random_state=42)
+
+      classifier = LogisticRegression()
+      classifier.fit(X_train, y_train)
+
+      #Fazer previsões
+      y_pred = classifier.predict(X_test)
+
+      #Calcular métricas
+      precision = precision_score(y_test, y_pred)
+      recall = recall_score(y_test, y_pred)
+      f1 = f1_score(y_test, y_pred)
+      
+      #Plotar os dados reduzidos com rótulos verdadeiros para visualização
+      plt.figure(figsize=(10, 6))
+      plt.scatter(data_pca[:, 0], data_pca[:, 1], c=df_house_train['TrueLabels'], alpha=0.5, cmap='viridis')
+      plt.title('Redução de Dimensionalidade com PCA')
+      plt.xlabel('Componente Principal 1')
+      plt.ylabel('Componente Principal 2')
+      plt.colorbar(label='True Labels')
+      plt.show()
+      ```
+    - Apriori:
+      - Verificamos se as colunas categóricas foram identificadas corretamente;
+      - Utilizamos SimpleImputer para tratar valores ausentes (valor mais frequente para categóricas);
+      - Utilizamos OneHotEncoder para codificar as colunas categóricas em formato binário;
+      - Criamos um dataframe categorical_df com os dados categóricos processados;
+        ```python
+        selected_categorical_features = ['MSZoning', 'Street', 'Neighborhood', 'BldgType', 'HouseStyle', 'RoofStyle', 'Exterior1st', 'Foundation', 'Heating', 'CentralAir']
+
+        df_selected = df_house_train[selected_categorical_features]
+
+        categorical_pipeline = Pipeline([('imputer', SimpleImputer(strategy='most_frequent')),('onehot', OneHotEncoder(handle_unknown='ignore', sparse=False))])
+
+        categorical_data_prepared = categorical_pipeline.fit_transform(df_selected)
+
+        categorical_df = pd.DataFrame(categorical_data_prepared, columns=categorical_pipeline.named_steps['onehot'].get_feature_names_out(selected_categorical_features))
+
+        print(categorical_df.head())
+        print(categorical_df.shape)
+        ```
+    - Utilizamos a função apriori da biblioteca mlxtend para identificar conjuntos frequentes de itens com um suporte mínimo de 5%;
+    - Geramos regras de associação usando a função association_rules e filtramos as regras com um lift mínimo de 1.0;
+    - Exibimos e ordenamos as regras de associação para visualizar as mais interessantes.
+      ```python
+      from mlxtend.frequent_patterns import apriori, association_rules
+
+      frequent_itemsets = apriori(categorical_df, min_support=0.1, use_colnames=True)
+
+      rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
+
+      print(rules)
+
+      rules = rules.sort_values(by='lift', ascending=False)
+      print(rules.head())
+      ```
+    - Local Outlier Factor:
+      - Verificamos se as colunas numéricas e categóricas foram identificadas corretamente;
+      - Utilizamos SimpleImputer para tratar valores ausentes (média para variáveis numéricas e valor mais frequente para categóricas);
+      - Utilizamos StandardScaler para escalar as colunas numéricas e OneHotEncoder para codificar as colunas categóricas;
+      - Aplicamos o transformador para obter os dados preparados e verificamos sua forma;
+        ```python
+        numerical_features = df_house_train.select_dtypes(include=['int64', 'float64']).columns.tolist()
+        categorical_features = df_house_train.select_dtypes(include=['object']).columns.tolist()
+
+        if 'SalePrice' in numerical_features:
+          numerical_features.remove('SalePrice')
+        if 'SalePrice' in categorical_features:
+          categorical_features.remove('SalePrice')
+
+
+        numerical_pipeline = Pipeline([('imputer', SimpleImputer(strategy='mean')), ('scaler', StandardScaler())])
+
+        categorical_pipeline = Pipeline([('imputer', SimpleImputer(strategy='most_frequent')),('onehot', OneHotEncoder(handle_unknown='ignore', sparse=False))])
+
+        preprocessor = ColumnTransformer(transformers=[('num', numerical_pipeline, numerical_features),('cat', categorical_pipeline, categorical_features)])
+
+        data_prepared = preprocessor.fit_transform(df_house_train)
+
+        print(data_prepared.shape)
+        ```
+    - Usamos LocalOutlierFactor para detectar outliers no dataset. Definimos n_neighbors=20 e contamination=0.05 (assumindo que 5% dos dados são outliers);
+    - Adicionamos a informação de outliers ao dataframe original (df_house_train);
+    - Plotamos a distribuição dos scores de outliers;
+    - Visualizamos os outliers identificados em um gráfico de dispersão comparando GrLivArea e SalePrice;
+      ```python
+      from sklearn.neighbors import LocalOutlierFactor
+
+      lof = LocalOutlierFactor(n_neighbors=20, contamination=0.05)
+      outlier_scores = lof.fit_predict(data_prepared)
+
+      df_house_train['Outlier'] = outlier_scores
+
+      print("Número de outliers detectados:", np.sum(outlier_scores == -1))
+
+      plt.figure(figsize=(10, 6))
+      plt.hist(outlier_scores, bins=50, alpha=0.75, edgecolor='black')
+      plt.title('Distribuição dos Scores de Outliers')
+      plt.xlabel('Score de Outlier')
+      plt.ylabel('Frequência')
+      plt.show()
+
+      plt.figure(figsize=(10, 6))
+      outliers = df_house_train[outlier_scores == -1]
+      non_outliers = df_house_train[outlier_scores != -1]
+      plt.scatter(non_outliers['GrLivArea'], non_outliers['SalePrice'], c='blue', label='Non-Outliers', alpha=0.5)
+      plt.scatter(outliers['GrLivArea'], outliers['SalePrice'], c='red', label='Outliers', alpha=0.5)
+      plt.xlabel('GrLivArea')
+      plt.ylabel('SalePrice')
+      plt.title('Outliers Detectados pelo LOF')
+      plt.legend()
+      plt.show()
+      ```
